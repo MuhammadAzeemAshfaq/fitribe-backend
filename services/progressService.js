@@ -56,30 +56,26 @@ async function recordWorkoutSession({ userId, workoutPlanId, exercises, duration
 
 // ==================== GET USER PROGRESS ====================
 async function getUserProgress(userId, period) {
-  // Get user progress document
-  //const progressDoc = await db.collection('userProgress').doc(userId).get();
-
-  const progressDoc = await db.collection('userProgress')
+   const snapshot = await db
+    .collection('userProgress')
     .where('userId', '==', String(userId))
     .get();
-  
-  if (!progressDoc.exists) {
+
+  if (snapshot.empty) {
     return null;
   }
-  
-  const progressData = progressDoc.data();
-  
-  // Build query based on period
+
+  const progressData = snapshot.docs[0].data();
+
   const query = buildWorkoutHistoryQuery(userId, period);
-  
-  // Get workout history
+
   const sessions = await query.limit(50).get();
   const workoutHistory = sessions.docs.map(doc => ({
     id: doc.id,
     ...doc.data(),
     createdAt: doc.data().createdAt?.toDate()
   }));
-  
+
   return {
     progress: {
       ...progressData,
