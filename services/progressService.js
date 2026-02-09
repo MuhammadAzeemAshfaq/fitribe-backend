@@ -57,7 +57,11 @@ async function recordWorkoutSession({ userId, workoutPlanId, exercises, duration
 // ==================== GET USER PROGRESS ====================
 async function getUserProgress(userId, period) {
   // Get user progress document
-  const progressDoc = await db.collection('userProgress').doc(userId).get();
+  //const progressDoc = await db.collection('userProgress').doc(userId).get();
+
+  const progressDoc = await db.collection('userProgress')
+    .where('userId', '==', userId)
+    .get();
   
   if (!progressDoc.exists) {
     return null;
