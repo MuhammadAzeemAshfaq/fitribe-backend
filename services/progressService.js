@@ -60,7 +60,7 @@ async function getUserProgress(userId, period) {
   //const progressDoc = await db.collection('userProgress').doc(userId).get();
 
   const progressDoc = await db.collection('userProgress')
-    .where('userId', '==', userId)
+    .where('userId', '==', String(userId))
     .get();
   
   if (!progressDoc.exists) {
