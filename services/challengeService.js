@@ -46,139 +46,170 @@ async function getChallengeLeaderboard(challengeId, limit = 10) {
     .orderBy('progress', 'desc')
     .limit(limit)
     .get();
-  
-  const leaderboard = [];
-  
-  for (const doc of participantsSnapshot.docs) {
+
+  // Fetch all user docs in parallel
+  const leaderboard = await Promise.all(participantsSnapshot.docs.map(async (doc, index) => {
     const data = doc.data();
     const userDoc = await db.collection('users').doc(data.userId).get();
     const userData = userDoc.exists ? userDoc.data() : {};
-    
-    leaderboard.push({
+
+    return {
       userId: data.userId,
       userName: userData.name || 'Unknown',
       profilePicUrl: userData.profilePicUrl || '',
       progress: data.progress,
       status: data.status,
-      rank: leaderboard.length + 1,
+      rank: index + 1, // ranks sequentially for now
       completedAt: data.completedAt?.toDate(),
       joinedAt: data.createdAt?.toDate()
-    });
-  }
-  
+    };
+  }));
+
   return leaderboard;
 }
 
+
 async function joinChallenge(userId, challengeId) {
-  const challengeDoc = await db.collection('challenges').doc(challengeId).get();
-  
-  if (!challengeDoc.exists) {
-    throw new Error('Challenge not found');
-  }
-  
-  const challenge = challengeDoc.data();
-  
-  if (challenge.status !== 'active') {
-    throw new Error('Challenge is not active');
-  }
-  
-  const existing = await db.collection('challengeParticipants')
-    .where('userId', '==', userId)
-    .where('challengeId', '==', challengeId)
-    .get();
-  
-  if (!existing.empty) {
-    throw new Error('Already joined this challenge');
-  }
-  
-  const participantRef = await db.collection('challengeParticipants').add({
-    userId,
-    challengeId,
-    progress: 0,
-    status: 'in_progress',
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-  });
-  
-  await db.collection('challenges').doc(challengeId).update({
-    participantCount: admin.firestore.FieldValue.increment(1)
-  });
-  
-  return {
-    participantId: participantRef.id,
-    challenge: {
-      id: challengeId,
-      ...challenge
+  const challengeRef = db.collection('challenges').doc(challengeId);
+  const participantRef = db
+    .collection('challengeParticipants')
+    .doc(`${userId}_${challengeId}`);
+
+  return await db.runTransaction(async (transaction) => {
+    const challengeDoc = await transaction.get(challengeRef);
+
+    if (!challengeDoc.exists) {
+      throw new Error('Challenge not found');
     }
-  };
+
+    const challenge = challengeDoc.data();
+
+    if (challenge.status !== 'active') {
+      throw new Error('Challenge is not active');
+    }
+
+    const participantDoc = await transaction.get(participantRef);
+
+    // If participant already exists
+    if (participantDoc.exists) {
+      const participant = participantDoc.data();
+
+      if (participant.status === 'in_progress') {
+        throw new Error('Already participating in this challenge');
+      }
+
+      if (participant.status === 'completed') {
+        throw new Error('You already completed this challenge');
+      }
+
+      if (participant.status === 'abandoned') {
+        transaction.update(participantRef, {
+          status: 'in_progress',
+          progress: 0,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        transaction.update(challengeRef, {
+          participants: admin.firestore.FieldValue.increment(1)
+        });
+
+        return { rejoined: true };
+      }
+    }
+
+    // If no participant exists → create new
+    transaction.set(participantRef, {
+      userId,
+      challengeId,
+      progress: 0,
+      status: 'in_progress',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    transaction.update(challengeRef, {
+      participants: admin.firestore.FieldValue.increment(1)
+    });
+
+    return { joined: true };
+  });
 }
 
+
 async function leaveChallenge(userId, challengeId) {
-  const participantSnapshot = await db.collection('challengeParticipants')
-    .where('userId', '==', userId)
-    .where('challengeId', '==', challengeId)
-    .limit(1)
-    .get();
-  
-  if (participantSnapshot.empty) {
-    throw new Error('Not participating in this challenge');
-  }
-  
-  const participantDoc = participantSnapshot.docs[0];
-  const participant = participantDoc.data();
-  
-  if (participant.status === 'completed') {
-    throw new Error('Cannot leave a completed challenge');
-  }
-  
-  await participantDoc.ref.update({
-    status: 'abandoned',
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  const challengeRef = db.collection('challenges').doc(challengeId);
+  const participantRef = db
+    .collection('challengeParticipants')
+    .doc(`${userId}_${challengeId}`);
+
+  return await db.runTransaction(async (transaction) => {
+    const participantDoc = await transaction.get(participantRef);
+
+    if (!participantDoc.exists) {
+      throw new Error('Challenge not joined');
+    }
+
+    const participant = participantDoc.data();
+
+    if (participant.status === 'abandoned') {
+      throw new Error('Challenge not joined');
+    }
+
+    if (participant.status === 'completed') {
+      throw new Error('Cannot leave a completed challenge');
+    }
+
+    // Safe to abandon
+    transaction.update(participantRef, {
+      status: 'abandoned',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    transaction.update(challengeRef, {
+      participants: admin.firestore.FieldValue.increment(-1)
+    });
+
+    return { success: true };
   });
-  
-  await db.collection('challenges').doc(challengeId).update({
-    participantCount: admin.firestore.FieldValue.increment(-1)
-  });
-  
-  return { success: true };
 }
+
 
 async function getUserChallenges(userId, status = 'all') {
   let query = db.collection('challengeParticipants')
     .where('userId', '==', userId);
-  
+
   if (status !== 'all') {
     query = query.where('status', '==', status);
   }
-  
+
   const participantsSnapshot = await query
     .orderBy('createdAt', 'desc')
     .get();
-  
-  const challenges = [];
-  
-  for (const doc of participantsSnapshot.docs) {
+
+  // Fetch all challenge docs in parallel
+  const challenges = await Promise.all(participantsSnapshot.docs.map(async (doc) => {
     const participant = doc.data();
     const challengeDoc = await db.collection('challenges').doc(participant.challengeId).get();
-    
-    if (challengeDoc.exists) {
-      const challengeData = challengeDoc.data();
-      challenges.push({
-        id: challengeDoc.id,
-        ...challengeData,
-        userProgress: participant.progress,
-        userStatus: participant.status,
-        userRank: participant.rank,
-        joinedAt: participant.createdAt?.toDate(),
-        completedAt: participant.completedAt?.toDate(),
-        startDate: challengeData.startDate?.toDate(),
-        endDate: challengeData.endDate?.toDate(),
-        createdAt: challengeData.createdAt?.toDate()
-      });
-    }
-  }
-  
-  return challenges;
+
+    if (!challengeDoc.exists) return null;
+
+    const challengeData = challengeDoc.data();
+    return {
+      id: challengeDoc.id,
+      ...challengeData,
+      userProgress: participant.progress,
+      userStatus: participant.status,
+      userRank: participant.rank,
+      joinedAt: participant.createdAt?.toDate(),
+      completedAt: participant.completedAt?.toDate(),
+      startDate: challengeData.startDate?.toDate(),
+      endDate: challengeData.endDate?.toDate(),
+      createdAt: challengeData.createdAt?.toDate()
+    };
+  }));
+
+  // Remove any nulls if a challenge doc didn't exist
+  return challenges.filter(c => c !== null);
 }
 
 async function updateChallengeProgress(userId, exercises) {

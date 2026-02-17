@@ -6,6 +6,16 @@ const db = admin.firestore();
  * Handles badge awarding and management
  */
 
+// ==================== GET ALL BADGES ====================
+async function getAllBadges() {
+  const badgesSnapshot = await db.collection('badges').get();
+  
+  return badgesSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+}
+
 // ==================== CHECK AND AWARD BADGES ====================
 async function checkAndAwardBadges(userId) {
   try {
@@ -126,6 +136,28 @@ async function getUserBadges(userId) {
   return badges;
 }
 
+// ==================== GET USER BADGES WITH LOCKED ====================
+async function getUserBadgesWithLocked(userId) {
+  try {
+    // Get user's earned badges
+    const earnedBadges = await getUserBadges(userId);
+    
+    // Get available (locked) badges
+    const lockedBadges = await getAvailableBadges(userId);
+    
+    return {
+      earned: earnedBadges,
+      locked: lockedBadges,
+      totalEarned: earnedBadges.length,
+      totalAvailable: earnedBadges.length + lockedBadges.length
+    };
+    
+  } catch (error) {
+    console.error('Error getting user badges with locked:', error);
+    throw error;
+  }
+}
+
 // ==================== GET AVAILABLE BADGES ====================
 async function getAvailableBadges(userId) {
   const allBadgesSnapshot = await db.collection('badges').get();
@@ -186,8 +218,10 @@ function calculateBadgeProgress(badge, progress) {
 }
 
 module.exports = {
+  getAllBadges,
   checkAndAwardBadges,
   getUserBadges,
+  getUserBadgesWithLocked,  // ← Added
   getAvailableBadges,
   checkBadgeCondition,
   awardBadge,

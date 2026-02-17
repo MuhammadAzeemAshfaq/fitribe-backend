@@ -1,4 +1,4 @@
-const progressService = require('../services/progressService');
+const progressService = require('../../services/public/progressService');
 
 /**
  * Progress Controller

@@ -1,4 +1,4 @@
-const badgeService = require('../services/badgeService');
+const badgeService = require('../../services/public/badgeService');
 
 /**
  * Badge Controller
@@ -30,12 +30,9 @@ exports.getAllBadges = async (req, res) => {
 exports.getUserBadges = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { includeProgress } = req.query;
     
-    const result = await badgeService.getUserBadgesWithLocked(
-      userId, 
-      includeProgress === 'true'
-    );
+    // Use getUserBadgesWithLocked which returns both earned and locked
+    const result = await badgeService.getUserBadgesWithLocked(userId);
     
     res.status(200).json({
       success: true,
@@ -55,19 +52,13 @@ exports.getUserBadges = async (req, res) => {
 exports.getBadgeProgress = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { category } = req.query; // Optional filter by category
     
-    const badges = await badgeService.getBadgeProgress(userId, category);
-    
-    if (!badges) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'User progress not found' 
-      });
-    }
+    // Get available badges with progress
+    const badges = await badgeService.getAvailableBadges(userId);
     
     res.status(200).json({
       success: true,
+      count: badges.length,
       badges
     });
     
@@ -85,9 +76,12 @@ exports.getBadgeDetails = async (req, res) => {
   try {
     const { badgeId } = req.params;
     
-    const badge = await badgeService.getBadgeDetails(badgeId);
+    // Get badge from collection
+    const admin = require('firebase-admin');
+    const db = admin.firestore();
+    const badgeDoc = await db.collection('badges').doc(badgeId).get();
     
-    if (!badge) {
+    if (!badgeDoc.exists) {
       return res.status(404).json({ 
         success: false, 
         error: 'Badge not found' 
@@ -96,7 +90,10 @@ exports.getBadgeDetails = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      badge
+      badge: {
+        id: badgeDoc.id,
+        ...badgeDoc.data()
+      }
     });
     
   } catch (error) {
@@ -114,15 +111,18 @@ exports.getNextBadges = async (req, res) => {
     const { userId } = req.params;
     const { limit } = req.query;
     
-    const badges = await badgeService.getNextAvailableBadges(
-      userId,
-      parseInt(limit) || 5
-    );
+    // Get available badges and sort by progress
+    const allAvailable = await badgeService.getAvailableBadges(userId);
+    
+    // Sort by progress (highest progress first = closest to earning)
+    const sortedBadges = allAvailable
+      .sort((a, b) => b.progress - a.progress)
+      .slice(0, parseInt(limit) || 5);
     
     res.status(200).json({
       success: true,
-      count: badges.length,
-      badges
+      count: sortedBadges.length,
+      badges: sortedBadges
     });
     
   } catch (error) {

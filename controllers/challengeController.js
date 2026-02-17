@@ -1,4 +1,4 @@
-const challengeService = require('../services/challengeService');
+const challengeService = require('../../services/public/challengeService');
 
 /**
  * Challenge Controller

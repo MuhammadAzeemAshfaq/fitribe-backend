@@ -1,6 +1,6 @@
 const admin = require('firebase-admin');
 const db = admin.firestore();
-const progressUtils = require('../utils/progressUtils');
+const progressUtils = require('../../utils/progressUtils');
 // const badgeService = require('./badgeService');
 // const challengeService = require('./challengeService');
 
@@ -58,7 +58,7 @@ async function recordWorkoutSession({ userId, workoutPlanId, exercises, duration
 async function getUserProgress(userId, period) {
    const snapshot = await db
     .collection('userProgress')
-    .where('userId', '==', String(userId))
+    .where('userId', '==', userId)
     .get();
 
   if (snapshot.empty) {
