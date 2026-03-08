@@ -15,13 +15,31 @@ const { requestLogger } = require('./utils/logger');
 //   credential: admin.credential.cert(serviceAccount)
 // });
 
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-  }),
-});
+// Initialize Firebase Admin
+let privateKey;
+try {
+  // Handle both escaped and unescaped newlines
+  privateKey = process.env.FIREBASE_PRIVATE_KEY
+    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+    : undefined;
+    
+  if (!privateKey) {
+    throw new Error('FIREBASE_PRIVATE_KEY not found in environment variables');
+  }
+  
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey,
+    }),
+  });
+  
+  console.log('✅ Firebase initialized successfully');
+} catch (error) {
+  console.error('❌ Firebase initialization failed:', error.message);
+  process.exit(1);
+}
 
 const app = express();
 
