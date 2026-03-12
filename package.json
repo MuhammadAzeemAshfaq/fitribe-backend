@@ -1,11 +1,52 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Make sure in backend folder",
+  "description": "FiTribe Backend API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+
+    "test": "jest",
+    "test:unit": "jest --testPathPatterns=tests/unit",
+    "test:integration": "jest --testPathPatterns=tests/integration --runInBand",
+    "test:coverage": "jest --coverage --runInBand",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --coverage --runInBand --forceExit",
+
+
+    "lint": "eslint . --ext .js --ignore-path .gitignore",
+    "lint:fix": "eslint . --ext .js --fix --ignore-path .gitignore",
+    "format": "prettier --write '**/*.js' --ignore-path .gitignore",
+    "format:check": "prettier --check '**/*.js' --ignore-path .gitignore"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFiles": ["./tests/setup.js"],
+    "testMatch": ["**/tests/**/*.test.js"],
+    "collectCoverageFrom": [
+      "controllers/public/**/*.js",
+      "services/public/**/*.js",
+      "middleware/**/*.js",
+      "utils/progressUtils.js",
+      "utils/badgeUtils.js",
+      "utils/challengeUtils.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 75,
+        "lines": 75,
+        "statements": 75
+      }
+    },
+    "coverageReporters": ["text", "lcov", "json-summary"],
+    "coverageDirectory": "coverage",
+    "testTimeout": 15000,
+    "clearMocks": true,
+    "resetMocks": false,
+    "restoreMocks": false,
+    "verbose": true
   },
   "keywords": [],
   "author": "",
@@ -29,6 +70,12 @@
     "nodemon": "^3.1.11",
     "prettier": "^3.8.1",
     "supertest": "^7.2.2"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "directories": {
     "test": "tests"
