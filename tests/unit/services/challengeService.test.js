@@ -9,7 +9,7 @@ const {
   leaveChallenge,
   getUserChallenges,
   updateChallengeProgress
-} = require('../../../services/public/challengeService');
+} = require('../../../src/services/public/challengeService');
 
 // ==================== getActiveChallenges ====================
 describe('getActiveChallenges', () => {

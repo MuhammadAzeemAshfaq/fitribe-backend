@@ -7,11 +7,11 @@ const admin = require('firebase-admin');
 const db = admin.firestore();
 
 // We mock the sub-services that progressService depends on
-jest.mock('../../../services/public/challengeService', () => ({
+jest.mock('../../../src/services/public/challengeService', () => ({
   updateChallengeProgress: jest.fn().mockResolvedValue(true)
 }));
 
-jest.mock('../../../services/public/badgeService', () => ({
+jest.mock('../../../src/services/public/badgeService', () => ({
   checkAndAwardBadges: jest.fn().mockResolvedValue([])
 }));
 
@@ -19,7 +19,7 @@ const {
   recordWorkoutSession,
   getUserProgress,
   getWorkoutStats
-} = require('../../../services/public/progressService');
+} = require('../../../src/services/public/progressService');
 
 // ==================== recordWorkoutSession ====================
 describe('recordWorkoutSession', () => {
@@ -66,7 +66,7 @@ describe('recordWorkoutSession', () => {
   });
 
   it('should call challengeService.updateChallengeProgress', async () => {
-    const challengeService = require('../../../services/public/challengeService');
+    const challengeService = require('../../../src/services/public/challengeService');
     await recordWorkoutSession(validInput);
     expect(challengeService.updateChallengeProgress).toHaveBeenCalledWith(
       'user-123',
@@ -75,7 +75,7 @@ describe('recordWorkoutSession', () => {
   });
 
   it('should call badgeService.checkAndAwardBadges', async () => {
-    const badgeService = require('../../../services/public/badgeService');
+    const badgeService = require('../../../src/services/public/badgeService');
     await recordWorkoutSession(validInput);
     expect(badgeService.checkAndAwardBadges).toHaveBeenCalledWith('user-123');
   });

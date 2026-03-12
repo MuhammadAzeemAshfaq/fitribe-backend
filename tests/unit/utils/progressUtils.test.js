@@ -9,7 +9,7 @@ const {
   formatProgressData,
   calculateDaysUntilNextLevel,
   getStreakMilestone
-} = require('../../../utils/progressUtils');
+} = require('../../../src/utils/progressUtils');
 
 describe('progressUtils', () => {
 

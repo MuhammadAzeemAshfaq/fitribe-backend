@@ -14,7 +14,7 @@ const {
   calculateEstimatedCompletionDate,
   groupChallengesByStatus,
   formatTimeRemaining
-} = require('../../../utils/challengeUtils');
+} = require('../../../src/utils/challengeUtils');
 
 describe('challengeUtils', () => {
 

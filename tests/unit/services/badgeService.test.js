@@ -12,7 +12,7 @@ const {
   calculateBadgeProgress,
   getAllBadges,
   checkAndAwardBadges
-} = require('../../../services/public/badgeService');
+} = require('../../../src/services/public/badgeService');
 
 // ==================== checkBadgeCondition ====================
 describe('checkBadgeCondition', () => {

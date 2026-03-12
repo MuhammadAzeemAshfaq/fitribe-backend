@@ -17,7 +17,7 @@ const {
   validateBadgeData,
   calculateCollectionCompletion,
   getRecommendedNextBadge
-} = require('../../../utils/badgeUtils');
+} = require('../../../src/utils/badgeUtils');
 
 describe('badgeUtils', () => {
 

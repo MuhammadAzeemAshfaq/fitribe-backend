@@ -66,10 +66,14 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 const progressRoutes = require('./routes/public/progress');
 const badgeRoutes = require('./routes/public/badge');
 const challengeRoutes = require('./routes/public/challenge');
+const userRoutes = require('./routes/public/users');
+const leaderboardRoutes = require('./routes/public/leaderboard');
 
 app.use('/api/progress', progressRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/challenges', challengeRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 
 // ==================== ADMIN ROUTES ====================
 const adminChallengeRoutes = require('./routes/admin/challenge');

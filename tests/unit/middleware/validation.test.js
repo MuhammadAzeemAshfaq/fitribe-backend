@@ -11,7 +11,7 @@ const {
   validatePeriod,
   validateIdParam,
   sanitizeInput
-} = require('../../../middleware/validation');
+} = require('../../../src/middleware/validation');
 
 // ==================== validateWorkoutSession ====================
 describe('validateWorkoutSession', () => {

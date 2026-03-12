@@ -4,7 +4,7 @@
  */
 
 const admin = require('firebase-admin');
-const { verifyToken, verifyOwnership, requireAdmin, optionalAuth } = require('../../../middleware/auth');
+const { verifyToken, verifyOwnership, requireAdmin, optionalAuth } = require('../../../src/middleware/auth');
 
 describe('Auth Middleware', () => {
 
