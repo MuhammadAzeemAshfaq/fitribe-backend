@@ -25,12 +25,14 @@
     "setupFiles": ["./tests/setup.js"],
     "testMatch": ["**/tests/**/*.test.js"],
     "collectCoverageFrom": [
-      "controllers/public/**/*.js",
-      "services/public/**/*.js",
-      "middleware/**/*.js",
-      "utils/progressUtils.js",
-      "utils/badgeUtils.js",
-      "utils/challengeUtils.js"
+      "src/controllers/public/**/*.js",
+      "src/services/public/**/*.js",
+      "src/middleware/**/*.js",
+      "src/utils/progressUtils.js",
+      "src/utils/badgeUtils.js",
+      "src/utils/challengeUtils.js",
+      "!**/node_modules/**",
+      "!**/tests/**"
     ],
     "coverageThreshold": {
       "global": {
