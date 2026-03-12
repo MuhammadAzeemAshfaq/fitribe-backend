@@ -5,13 +5,13 @@
 const request = require('supertest');
 const admin = require('firebase-admin');
 
-jest.mock('../../../services/public/badgeService');
-const badgeService = require('../../../services/public/badgeService');
+jest.mock('../../../src/services/public/badgeService');
+const badgeService = require('../../../src/services/public/badgeService');
 
 let app;
 beforeAll(() => {
   admin.apps.length = 1;
-  app = require('../../../index');
+  app = require('../../../src/index');
 });
 
 const mockValidToken = (uid = 'test-user-123') => {

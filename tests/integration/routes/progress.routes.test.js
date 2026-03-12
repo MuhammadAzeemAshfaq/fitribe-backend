@@ -5,13 +5,13 @@
 const request = require('supertest');
 const admin = require('firebase-admin');
 
-jest.mock('../../../services/public/progressService');
-const progressService = require('../../../services/public/progressService');
+jest.mock('../../../src/services/public/progressService');
+const progressService = require('../../../src/services/public/progressService');
 
 let app;
 beforeAll(() => {
   admin.apps.length = 1;
-  app = require('../../../index');
+  app = require('../../../src/index');
 });
 
 const mockValidToken = (uid = 'test-user-123') => {

@@ -7,15 +7,15 @@ const request = require('supertest');
 const admin = require('firebase-admin');
 
 // Mock the service layer so routes tests don't need Firestore
-jest.mock('../../../services/public/challengeService');
-const challengeService = require('../../../services/public/challengeService');
+jest.mock('../../../src/services/public/challengeService');
+const challengeService = require('../../../src/services/public/challengeService');
 
 // Build the app without starting the server
 let app;
 beforeAll(() => {
   // Ensure Firebase is "initialized"
   admin.apps.length = 1;
-  app = require('../../../index');
+  app = require('../../../src/index');
 });
 
 // Helper: mock a valid Firebase token verification
