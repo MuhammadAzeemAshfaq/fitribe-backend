@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const db = admin.firestore();
 const progressUtils = require('../../utils/progressUtils');
+ const socialService = require('./socialService');
 // const badgeService = require('./badgeService');
 // const challengeService = require('./challengeService');
 
@@ -46,6 +47,13 @@ async function recordWorkoutSession({ userId, workoutPlanId, exercises, duration
   // Check for new badges
   const newBadges = await badgeService.checkAndAwardBadges(userId);
   
+  await socialService.logActivity(userId, 'workout_completed', {
+    workoutPlanId: workoutPlanId || null,
+    durationMinutes,
+    totalCalories,
+    sessionId: sessionRef.id
+  });
+
   return {
     sessionId: sessionRef.id,
     totalCalories: Math.round(totalCalories),

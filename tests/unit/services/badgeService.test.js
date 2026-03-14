@@ -7,6 +7,10 @@
 const admin = require('firebase-admin');
 const db = admin.firestore();
 
+jest.mock('../../../src/services/public/notificationService', () => ({
+  notifyBadgeEarned: jest.fn().mockResolvedValue(true)
+}), { virtual: true });
+
 const {
   checkBadgeCondition,
   calculateBadgeProgress,

@@ -11,6 +11,7 @@ function getErrorStatusCode(message) {
   if (message.includes('not active') ||
       message.includes('already') ||
       message.includes('Cannot') ||
+      message.includes('cannot') ||
       message.includes('Only') ||
       message.includes('expired') ||
       message.includes('not part')) return 400;

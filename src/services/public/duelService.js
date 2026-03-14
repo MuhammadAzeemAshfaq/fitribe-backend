@@ -1,6 +1,8 @@
 const admin = require('firebase-admin');
 const db = admin.firestore();
 const badgeService = require('./badgeService');
+const socialService = require('./socialService');
+const notificationService = require('./notificationService');
 
 /**
  * Duel Service
@@ -47,6 +49,13 @@ async function createDuel(challengerId, opponentId, exercise, metric) {
 
   const duelRef = await db.collection('duels').add(duelData);
 
+  await notificationService.notifyDuelInvite(
+    opponentId,
+    challengerDoc.data().name,
+    duelRef.id,
+    exercise
+  );
+
   return {
     duelId: duelRef.id,
     ...duelData,
@@ -86,6 +95,11 @@ async function acceptDuel(duelId, userId) {
     status: 'active',
     expiresAt: admin.firestore.Timestamp.fromDate(completionDeadline)
   });
+
+  // Notify challenger their duel was accepted
+  const opponentUserDoc = await db.collection('users').doc(userId).get();
+  const opponentName = opponentUserDoc.exists ? opponentUserDoc.data().name : 'Your opponent';
+  await notificationService.notifyDuelAccepted(duel.challengerId, opponentName, duelId);
 
   return { duelId, status: 'active' };
 }
@@ -196,11 +210,21 @@ async function resolveDuel(duelId, duelData) {
     completedAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
+  const loserId = winnerId === challengerId ? opponentId : challengerId;
+
   // If there's a winner, increment their duel_wins and check badges
   if (winnerId) {
     await incrementDuelWins(winnerId);
     await badgeService.checkAndAwardBadges(winnerId);
+    await socialService.logActivity(winnerId, 'duel_won', {
+      duelId,
+      loserId: winnerId === challengerId ? opponentId : challengerId,
+      exercise: duelData.exercise
+    });
   }
+
+  // Always notify both players — notifyDuelResolved handles null winnerId (draw) gracefully
+  await notificationService.notifyDuelResolved(winnerId, loserId, duelId, duelData.exercise);
 
   return {
     duelId,

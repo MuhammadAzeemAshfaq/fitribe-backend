@@ -11,6 +11,15 @@ const {
   updateChallengeProgress
 } = require('../../../src/services/public/challengeService');
 
+jest.mock('../../../src/services/public/notificationService', () => ({
+  notifyChallengeCompleted: jest.fn().mockResolvedValue(true)
+}), { virtual: true });
+
+jest.mock('../../../src/services/public/socialService', () => ({
+  logActivity: jest.fn().mockResolvedValue(true)
+}), { virtual: true });
+
+
 // ==================== getActiveChallenges ====================
 describe('getActiveChallenges', () => {
   it('should return list of active challenges', async () => {

@@ -71,7 +71,9 @@ const leaderboardRoutes = require('./routes/public/leaderboard');
 const workoutPlanRoutes = require('./routes/public/workoutplans');
 const exerciseRoutes = require('./routes/public/exercises');
 const duelRoutes = require('./routes/public/duels');
-
+const postureRoutes = require('./routes/public/posture');
+const feedRoutes = require('./routes/public/feed');
+const notificationRoutes = require('./routes/public/notifications');
 
 app.use('/api/progress', progressRoutes);
 app.use('/api/badges', badgeRoutes);
@@ -81,6 +83,10 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/workoutplans', workoutPlanRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/duels', duelRoutes);
+app.use('/api/posture', postureRoutes);
+app.use('/api/feed', feedRoutes);
+app.use('/api/notifications', notificationRoutes);
+
 
 // ==================== ADMIN ROUTES ====================
 const adminChallengeRoutes = require('./routes/admin/challenge');

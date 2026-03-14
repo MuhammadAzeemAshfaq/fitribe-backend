@@ -1,5 +1,7 @@
 const admin = require('firebase-admin');
 const db = admin.firestore();
+const socialService = require('./socialService');
+const notificationService = require('./notificationService');
 
 /**
  * Badge Service
@@ -40,8 +42,14 @@ async function checkAndAwardBadges(userId) {
       
       if (earned) {
         await awardBadge(userId, badge);
+        await socialService.logActivity(userId, 'badge_earned', {
+          badgeId: badge.id,
+          badgeName: badge.name,
+          badgeTier: badge.tier
+        });
         newBadges.push(badge);
       }
+      await notificationService.notifyBadgeEarned(userId, badge.name, badge.tier);
     }
     
     return newBadges;
@@ -100,6 +108,8 @@ async function awardBadge(userId, badge) {
   
   console.log(`User ${userId} earned badge: ${badge.name}`);
 }
+
+
 
 // ==================== GET EARNED BADGE IDS ====================
 async function getEarnedBadgeIds(userId) {

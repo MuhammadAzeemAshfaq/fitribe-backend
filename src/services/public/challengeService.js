@@ -1,5 +1,7 @@
 const admin = require('firebase-admin');
 const db = admin.firestore();
+const socialService = require('./socialService');
+const notificationService = require('./notificationService');
 
 async function getActiveChallenges() {
   const challengesSnapshot = await db.collection('challenges')
@@ -268,6 +270,13 @@ async function updateChallengeProgress(userId, exercises) {
           completedAt: isCompleted ? admin.firestore.FieldValue.serverTimestamp() : null,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        await socialService.logActivity(userId, 'challenge_completed', {
+          challengeId,
+          challengeName: challenge.name
+        });
+        
+        await notificationService.notifyChallengeCompleted(userId, challenge.name);
         
         if (isCompleted && participant.status !== 'completed') {
           if (challenge.rewards && challenge.rewards.points) {
