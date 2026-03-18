@@ -8,7 +8,13 @@ const notificationService = require('./notificationService');
  * Duel Service
  * Handles 1v1 duel logic between users
  */
-
+function getIO() {
+  try {
+    return require('../../index').io;
+  } catch {
+    return null;
+  }
+}
 // ==================== CREATE DUEL (Send Invite) ====================
 async function createDuel(challengerId, opponentId, exercise, metric) {
   // Validate both users exist
@@ -221,6 +227,16 @@ async function resolveDuel(duelId, duelData) {
       loserId: winnerId === challengerId ? opponentId : challengerId,
       exercise: duelData.exercise
     });
+
+    const io = getIO();
+    if (io) {
+      io.to(`duel:${duelId}`).emit('duel:result', {
+        winnerId,
+        challengerReps: challengerPerf?.reps || 0,
+        opponentReps:   opponentPerf?.reps || 0,
+        exercise:       duelData.exercise
+      });
+    }
   }
 
   // Always notify both players — notifyDuelResolved handles null winnerId (draw) gracefully

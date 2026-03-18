@@ -2,19 +2,16 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "FiTribe Backend API",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
     "test": "jest",
     "test:unit": "jest --testPathPatterns=tests/unit",
     "test:integration": "jest --testPathPatterns=tests/integration --runInBand",
     "test:coverage": "jest --coverage --runInBand",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --runInBand --forceExit",
-
-
     "lint": "eslint . --ext .js --ignore-path .gitignore",
     "lint:fix": "eslint . --ext .js --fix --ignore-path .gitignore",
     "format": "prettier --write '**/*.js' --ignore-path .gitignore",
@@ -22,8 +19,12 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFiles": ["./tests/setup.js"],
-    "testMatch": ["**/tests/**/*.test.js"],
+    "setupFiles": [
+      "./tests/setup.js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
     "collectCoverageFrom": [
       "src/controllers/public/**/*.js",
       "src/services/public/**/*.js",
@@ -42,7 +43,11 @@
         "statements": 75
       }
     },
-    "coverageReporters": ["text", "lcov", "json-summary"],
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "json-summary"
+    ],
     "coverageDirectory": "coverage",
     "testTimeout": 15000,
     "clearMocks": true,
@@ -60,6 +65,7 @@
     "express": "^5.2.1",
     "firebase-admin": "^13.6.1",
     "helmet": "^8.1.0",
+    "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.19.0"

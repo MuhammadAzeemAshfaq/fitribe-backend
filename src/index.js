@@ -165,9 +165,29 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 FiTribe API server running on port ${PORT}`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
   console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
-  console.log(`🔐 Admin Endpoints:`);
-  console.log(`   - Challenges: http://localhost:${PORT}/api/admin/challenges`);
-  console.log(`   - Badges: http://localhost:${PORT}/api/admin/badges`);
 });
 
-module.exports = app;
+
+// ==================== SOCKET.IO ====================
+const { Server } = require('socket.io');
+const io = new Server(server, {
+  cors: {
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
+
+const registerDuelSocket = require('./sockets/duelSocket');
+registerDuelSocket(io);
+
+// ==================== GRACEFUL SHUTDOWN ====================
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Closing server gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+module.exports = { app, io };
