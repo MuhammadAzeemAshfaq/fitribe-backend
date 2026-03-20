@@ -24,6 +24,25 @@
  * 6. getDuelStats calls getUserDuels internally, which calls
  *    db.collection('duels').where(...).get() TWICE (challenger + opponent).
  */
+jest.mock('firebase-admin', () => {
+  const mockDb = {
+    collection: jest.fn()
+  };
+  const admin = {
+    firestore: jest.fn(() => mockDb),
+    auth: jest.fn()
+  };
+  admin.firestore.Timestamp = {
+    fromDate: jest.fn(d => ({ toDate: () => d }))
+  };
+  admin.firestore.FieldValue = {
+    increment: jest.fn(n => n),
+    serverTimestamp: jest.fn(() => new Date())
+  };
+  return admin;
+});
+
+jest.mock('../../../src/index', () => ({ io: null }), { virtual: true });
 
 jest.mock('../../../src/services/public/badgeService', () => ({
   checkAndAwardBadges: jest.fn().mockResolvedValue([])
@@ -41,9 +60,6 @@ jest.mock('../../../src/services/public/notificationService', () => ({
 
 const admin = require('firebase-admin');
 const db = admin.firestore();
-
-// Mock admin.firestore.Timestamp.fromDate — not set up by default in setup.js
-admin.firestore.Timestamp = { fromDate: jest.fn(d => ({ toDate: () => d })) };
 
 const {
   createDuel,

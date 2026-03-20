@@ -15,7 +15,7 @@ let app;
 beforeAll(() => {
   // Ensure Firebase is "initialized"
   admin.apps.length = 1;
-  app = require('../../../src/index');
+  (({ app } = require('../../../src/index')))
 });
 
 // Helper: mock a valid Firebase token verification

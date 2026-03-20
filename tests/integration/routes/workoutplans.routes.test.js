@@ -11,7 +11,7 @@ const workoutPlanService = require('../../../src/services/public/workoutplanServ
 let app;
 beforeAll(() => {
   admin.apps.length = 1;
-  app = require('../../../src/index');
+  (({ app } = require('../../../src/index')))
 });
 
 afterAll(() => {

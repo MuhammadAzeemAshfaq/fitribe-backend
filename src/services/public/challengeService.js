@@ -272,7 +272,7 @@ async function updateChallengeProgress(userId, exercises) {
         });
 
         await socialService.logActivity(userId, 'challenge_completed', {
-          challengeId,
+          challengeId: participant.challengeId,
           challengeName: challenge.name
         });
         

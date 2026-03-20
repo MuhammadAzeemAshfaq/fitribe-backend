@@ -11,7 +11,7 @@ const duelService = require('../../../src/services/public/duelService');
 let app;
 beforeAll(() => {
   admin.apps.length = 1;
-  app = require('../../../src/index');
+  (({ app } = require('../../../src/index')))
 });
 
 afterAll(() => {

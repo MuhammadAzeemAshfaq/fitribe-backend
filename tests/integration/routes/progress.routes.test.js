@@ -11,7 +11,7 @@ const progressService = require('../../../src/services/public/progressService');
 let app;
 beforeAll(() => {
   admin.apps.length = 1;
-  app = require('../../../src/index');
+  (({ app } = require('../../../src/index')))
 });
 
 const mockValidToken = (uid = 'test-user-123') => {

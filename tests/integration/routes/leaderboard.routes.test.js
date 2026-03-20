@@ -11,7 +11,7 @@ const leaderboardService = require('../../../src/services/public/leaderboardServ
 let app;
 beforeAll(() => {
   admin.apps.length = 1;
-  app = require('../../../src/index');
+  (({ app } = require('../../../src/index')))
 });
 
 afterAll(() => {

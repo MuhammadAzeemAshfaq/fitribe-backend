@@ -11,7 +11,7 @@ const socialService = require('../../../src/services/public/socialService');
 let app;
 beforeAll(() => {
   admin.apps.length = 1;
-  app = require('../../../src/index');
+  (({ app } = require('../../../src/index')))
 });
 
 afterAll(() => {
