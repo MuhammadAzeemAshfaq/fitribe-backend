@@ -141,6 +141,11 @@ async function updateUserProgress(userId, updates) {
 
 // ==================== HELPER: CREATE INITIAL PROGRESS ====================
 async function createInitialProgress(progressRef, userId, updates) {
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const yearKey = `${now.getFullYear()}`;
+  const dayOfMonth = now.getDate();
+
   // Create new progress document
   await progressRef.set({
     userId,
@@ -161,6 +166,9 @@ async function createInitialProgress(progressRef, userId, updates) {
       calories: updates.totalCalories,
       minutes: updates.durationMinutes
     },
+    workoutDays: { [monthKey]: [dayOfMonth] },
+    monthlyWorkoutCount: { [monthKey]: 1 },
+    yearlyWorkoutCount: { [yearKey]: 1 },
     lastWorkoutDate: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   });
@@ -183,11 +191,16 @@ async function updateExistingProgress(progressRef, currentData, updates) {
     currentData.currentStreak || 0,
     currentData.longestStreak || 0
   );
-  
+
   // Calculate new level
   const newXP = (currentData.experiencePoints || 0) + 50;
   const newLevel = progressUtils.calculateLevel(newXP);
-  
+
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const yearKey = `${now.getFullYear()}`;
+  const dayOfMonth = now.getDate();
+
   // Update progress
   await progressRef.update({
     totalWorkouts: admin.firestore.FieldValue.increment(1),
@@ -203,6 +216,9 @@ async function updateExistingProgress(progressRef, currentData, updates) {
     'monthlyStats.workouts': admin.firestore.FieldValue.increment(1),
     'monthlyStats.calories': admin.firestore.FieldValue.increment(updates.totalCalories),
     'monthlyStats.minutes': admin.firestore.FieldValue.increment(updates.durationMinutes),
+    [`workoutDays.${monthKey}`]: admin.firestore.FieldValue.arrayUnion(dayOfMonth),
+    [`monthlyWorkoutCount.${monthKey}`]: admin.firestore.FieldValue.increment(1),
+    [`yearlyWorkoutCount.${yearKey}`]: admin.firestore.FieldValue.increment(1),
     lastWorkoutDate: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   });
