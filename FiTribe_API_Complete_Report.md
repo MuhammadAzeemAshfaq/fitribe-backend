@@ -459,6 +459,15 @@ GET /api/progress/user_123?period=month
       "calories": 2600,
       "minutes": 450
     },
+    "workoutDays": {
+      "2026-04": [1, 3, 5, 7, 8, 10, 12]
+    },
+    "monthlyWorkoutCount": {
+      "2026-04": 10
+    },
+    "yearlyWorkoutCount": {
+      "2026": 12
+    },
     "lastWorkoutDate": "2026-04-01T10:30:00.000Z"
   },
   "workoutHistory": [
