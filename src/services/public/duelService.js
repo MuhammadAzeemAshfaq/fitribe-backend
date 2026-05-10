@@ -8,6 +8,7 @@ const notificationService = require('./notificationService');
  * Duel Service
  * Handles 1v1 duel logic between users
  */
+
 function getIO() {
   try {
     return require('../../index').io;
@@ -15,6 +16,7 @@ function getIO() {
     return null;
   }
 }
+
 // ==================== CREATE DUEL (Send Invite) ====================
 async function createDuel(challengerId, opponentId, exercise, metric) {
   // Validate both users exist
@@ -27,28 +29,37 @@ async function createDuel(challengerId, opponentId, exercise, metric) {
   if (!opponentDoc.exists) throw new Error('Opponent not found');
   if (challengerId === opponentId) throw new Error('Cannot duel yourself');
 
-  // Check for existing pending/active duel between these two users
-  const existingDuel = await db.collection('duels')
-    .where('challengerId', '==', challengerId)
-    .where('opponentId', '==', opponentId)
-    .where('status', 'in', ['pending', 'active'])
-    .get();
+  // Check for existing pending/active duel between these two users (both directions)
+  const [existingAsChallenger, existingAsOpponent] = await Promise.all([
+    db.collection('duels')
+      .where('challengerId', '==', challengerId)
+      .where('opponentId', '==', opponentId)
+      .where('status', 'in', ['pending', 'active'])
+      .get(),
+    db.collection('duels')
+      .where('challengerId', '==', opponentId)
+      .where('opponentId', '==', challengerId)
+      .where('status', 'in', ['pending', 'active'])
+      .get()
+  ]);
 
-  if (!existingDuel.empty) {
+  if (!existingAsChallenger.empty || !existingAsOpponent.empty) {
     throw new Error('A duel already exists between these users');
   }
 
-  const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours to accept
+  // FIX: Two separate expiry timestamps for the two phases
+  const inviteExpiresAt = new Date();
+  inviteExpiresAt.setHours(inviteExpiresAt.getHours() + 24); // 24h to accept
 
   const duelData = {
     challengerId,
     opponentId,
-    exercise,      // e.g. 'pushup'
-    metric,        // e.g. 'rep_count' or 'form_score'
+    exercise,             // e.g. 'pushup'
+    metric,               // e.g. 'rep_count' or 'form_score'
     status: 'pending',
     winnerId: null,
-    expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+    inviteExpiresAt: admin.firestore.Timestamp.fromDate(inviteExpiresAt),
+    completionDeadline: null, // set when accepted
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     completedAt: null
   };
@@ -87,22 +98,21 @@ async function acceptDuel(duelId, userId) {
     throw new Error(`Duel cannot be accepted — current status: ${duel.status}`);
   }
 
-  // Check if expired
-  if (duel.expiresAt.toDate() < new Date()) {
+  // Check invite expiry
+  if (duel.inviteExpiresAt.toDate() < new Date()) {
     await duelRef.update({ status: 'expired' });
     throw new Error('Duel invite has expired');
   }
 
-  // Set a new deadline: 48 hours to complete the duel
+  // FIX: Set a named completionDeadline field (48h), keep inviteExpiresAt untouched
   const completionDeadline = new Date();
   completionDeadline.setHours(completionDeadline.getHours() + 48);
 
   await duelRef.update({
     status: 'active',
-    expiresAt: admin.firestore.Timestamp.fromDate(completionDeadline)
+    completionDeadline: admin.firestore.Timestamp.fromDate(completionDeadline)
   });
 
-  // Notify challenger their duel was accepted
   const opponentUserDoc = await db.collection('users').doc(userId).get();
   const opponentName = opponentUserDoc.exists ? opponentUserDoc.data().name : 'Your opponent';
   await notificationService.notifyDuelAccepted(duel.challengerId, opponentName, duelId);
@@ -127,6 +137,12 @@ async function declineDuel(duelId, userId) {
     throw new Error('Can only decline a pending duel');
   }
 
+  // FIX: Check expiry for consistency — mark expired instead of declined if window passed
+  if (duel.inviteExpiresAt.toDate() < new Date()) {
+    await duelRef.update({ status: 'expired' });
+    throw new Error('Duel invite has already expired');
+  }
+
   await duelRef.update({ status: 'declined' });
 
   return { duelId, status: 'declined' };
@@ -141,7 +157,6 @@ async function submitPerformance(duelId, userId, performanceData) {
 
   const duel = duelDoc.data();
 
-  // Validate user is part of this duel
   if (duel.challengerId !== userId && duel.opponentId !== userId) {
     throw new Error('You are not part of this duel');
   }
@@ -150,12 +165,12 @@ async function submitPerformance(duelId, userId, performanceData) {
     throw new Error('Duel is not active');
   }
 
-  if (duel.expiresAt.toDate() < new Date()) {
+  // FIX: Check the correct field — completionDeadline (not inviteExpiresAt)
+  if (duel.completionDeadline && duel.completionDeadline.toDate() < new Date()) {
     await duelRef.update({ status: 'expired' });
     throw new Error('Duel has expired');
   }
 
-  // Check if this user already submitted
   const existingPerf = await db.collection('duelPerformance')
     .doc(`${duelId}_${userId}`)
     .get();
@@ -164,7 +179,6 @@ async function submitPerformance(duelId, userId, performanceData) {
     throw new Error('You have already submitted your performance');
   }
 
-  // Save performance
   await db.collection('duelPerformance').doc(`${duelId}_${userId}`).set({
     duelId,
     userId,
@@ -174,14 +188,12 @@ async function submitPerformance(duelId, userId, performanceData) {
     submittedAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
-  // Check if both users have now submitted → auto-resolve
   const otherUserId = duel.challengerId === userId ? duel.opponentId : duel.challengerId;
   const otherPerf = await db.collection('duelPerformance')
     .doc(`${duelId}_${otherUserId}`)
     .get();
 
   if (otherPerf.exists) {
-    // Both submitted — resolve the duel
     return await resolveDuel(duelId, duel);
   }
 
@@ -200,7 +212,6 @@ async function resolveDuel(duelId, duelData) {
   const cData = challengerPerf.data();
   const oData = opponentPerf.data();
 
-  // Compare based on metric
   const cValue = metric === 'form_score' ? cData.formScore : cData.reps;
   const oValue = metric === 'form_score' ? oData.formScore : oData.reps;
 
@@ -209,37 +220,40 @@ async function resolveDuel(duelId, duelData) {
   else if (oValue > cValue) winnerId = opponentId;
   // null = draw
 
-  // Update duel status
   await db.collection('duels').doc(duelId).update({
     status: 'completed',
     winnerId,
     completedAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
-  const loserId = winnerId === challengerId ? opponentId : challengerId;
+  // FIX: loserId is only meaningful when there's a winner; draw has no loser
+  const loserId = winnerId
+    ? (winnerId === challengerId ? opponentId : challengerId)
+    : null;
 
-  // If there's a winner, increment their duel_wins and check badges
   if (winnerId) {
     await incrementDuelWins(winnerId);
     await badgeService.checkAndAwardBadges(winnerId);
     await socialService.logActivity(winnerId, 'duel_won', {
       duelId,
-      loserId: winnerId === challengerId ? opponentId : challengerId,
+      loserId,
       exercise: duelData.exercise
     });
 
+    // FIX: Emit the metric-appropriate score fields
     const io = getIO();
     if (io) {
       io.to(`duel:${duelId}`).emit('duel:result', {
         winnerId,
-        challengerReps: challengerPerf?.reps || 0,
-        opponentReps:   opponentPerf?.reps || 0,
-        exercise:       duelData.exercise
+        metric,
+        challengerScore: cValue,
+        opponentScore: oValue,
+        exercise: duelData.exercise
       });
     }
   }
 
-  // Always notify both players — notifyDuelResolved handles null winnerId (draw) gracefully
+  // Always notify both players
   await notificationService.notifyDuelResolved(winnerId, loserId, duelId, duelData.exercise);
 
   return {
@@ -260,10 +274,9 @@ async function incrementDuelWins(userId) {
 
   if (!progressDoc.exists) return;
 
-  const currentWins = progressDoc.data().duelWins || 0;
-
+  // FIX: Use FieldValue.increment() — atomic, no read-then-write race condition
   await progressRef.update({
-    duelWins: currentWins + 1,
+    duelWins: admin.firestore.FieldValue.increment(1),
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   });
 }
@@ -276,13 +289,11 @@ async function getDuelDetails(duelId) {
 
   const duel = { duelId: duelDoc.id, ...duelDoc.data() };
 
-  // Fetch both users' names
   const [challengerDoc, opponentDoc] = await Promise.all([
     db.collection('users').doc(duel.challengerId).get(),
     db.collection('users').doc(duel.opponentId).get()
   ]);
 
-  // Fetch performances if available
   const [challengerPerf, opponentPerf] = await Promise.all([
     db.collection('duelPerformance').doc(`${duelId}_${duel.challengerId}`).get(),
     db.collection('duelPerformance').doc(`${duelId}_${duel.opponentId}`).get()
@@ -301,27 +312,40 @@ async function getDuelDetails(duelId) {
 
 // ==================== GET USER DUELS ====================
 async function getUserDuels(userId, status = 'all') {
-  let query = db.collection('duels').where('challengerId', '==', userId);
-
-  // Get duels where user is challenger
-  const challengerSnapshot = await (
-    status !== 'all'
-      ? query.where('status', '==', status)
-      : query
-  ).get();
-
-  // Get duels where user is opponent
+  let challengerQuery = db.collection('duels').where('challengerId', '==', userId);
   let opponentQuery = db.collection('duels').where('opponentId', '==', userId);
-  const opponentSnapshot = await (
-    status !== 'all'
-      ? opponentQuery.where('status', '==', status)
-      : opponentQuery
-  ).get();
+
+  const [challengerSnapshot, opponentSnapshot] = await Promise.all([
+    (status !== 'all' ? challengerQuery.where('status', '==', status) : challengerQuery).get(),
+    (status !== 'all' ? opponentQuery.where('status', '==', status) : opponentQuery).get()
+  ]);
 
   const duels = [
     ...challengerSnapshot.docs.map(doc => ({ duelId: doc.id, ...doc.data() })),
     ...opponentSnapshot.docs.map(doc => ({ duelId: doc.id, ...doc.data() }))
   ];
+
+  const now = new Date();
+
+  // FIX: Lazy expiry cleanup — mark stale pending/active duels as expired on read
+  const expiredUpdates = [];
+  for (const duel of duels) {
+    if (duel.status === 'pending' && duel.inviteExpiresAt?.toDate() < now) {
+      duel.status = 'expired';
+      expiredUpdates.push(
+        db.collection('duels').doc(duel.duelId).update({ status: 'expired' })
+      );
+    } else if (duel.status === 'active' && duel.completionDeadline?.toDate() < now) {
+      duel.status = 'expired';
+      expiredUpdates.push(
+        db.collection('duels').doc(duel.duelId).update({ status: 'expired' })
+      );
+    }
+  }
+
+  if (expiredUpdates.length > 0) {
+    await Promise.all(expiredUpdates);
+  }
 
   // Sort by createdAt descending
   duels.sort((a, b) => {
