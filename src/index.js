@@ -88,13 +88,6 @@ app.use('/api/feed', feedRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 
-// ==================== ADMIN ROUTES ====================
-const adminChallengeRoutes = require('./routes/admin/challenge');
-const adminBadgeRoutes = require('./routes/admin/badges');
-
-app.use('/api/admin/challenges', adminChallengeRoutes);
-app.use('/api/admin/badges', adminBadgeRoutes);
-
 // ==================== HEALTH CHECK (ENHANCED) ====================
 app.get('/health', (req, res) => {
   res.json({ 
